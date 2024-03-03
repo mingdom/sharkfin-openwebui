@@ -3,7 +3,7 @@
 This is a fork from https://github.com/open-webui/open-webui
 
 ```
-git clone https://github.com/open-webui/open-webui.git
+git clone git@github.com:mingdom/sharkfin-openwebui.git
 cd open-webui/
 
 # Copying required .env file
