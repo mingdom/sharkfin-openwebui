@@ -629,7 +629,10 @@
 								let data = JSON.parse(line.replace(/^data: /, ''));
 								console.log(data);
 
-								if (responseMessage.content == '' && data.choices[0].delta.content == '\n') {
+								if (typeof data === 'string') {
+									responseMessage.content += data;
+									messages = messages;
+								} else if (responseMessage.content == '' && data.choices[0].delta.content == '\n') {
 									continue;
 								} else {
 									responseMessage.content += data.choices[0].delta.content ?? '';

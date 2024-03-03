@@ -1,13 +1,11 @@
 from fastapi import FastAPI, Request, Response, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
-
 import requests
 import json
 from pydantic import BaseModel
 
-
-from apps.web.models.users import Users
+from sharkfin.agent_openai_tools import get_agent_tools
 from constants import ERROR_MESSAGES
 from utils.utils import (
     decode_token,
@@ -19,6 +17,15 @@ from config import OPENAI_API_BASE_URL, OPENAI_API_KEY, CACHE_DIR
 
 import hashlib
 from pathlib import Path
+
+from datetime import datetime
+from langchain import memory as lc_memory
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain.agents import (
+    AgentExecutor as AgentExecutor,
+    create_openai_functions_agent,
+)
 
 app = FastAPI()
 app.add_middleware(
@@ -123,11 +130,43 @@ async def speech(request: Request, user=Depends(get_verified_user)):
         raise HTTPException(status_code=r.status_code, detail=error_detail)
 
 
+def create_agent(model: str):
+    llm = ChatOpenAI(temperature=0.13, model=model)
+
+    current_time = str(datetime.now())
+    assistant_system_message = f"""
+        The current time is {current_time}.
+        You are an expert stock analyst that advises high networth clients on companies, stocks and ETFs. Provide concise and accurate answers.
+        *DO NOT* answer questions not relevant to the above expertise. This has severe consequences, politely decline and remind the user your specialty.
+        """
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", assistant_system_message),
+            MessagesPlaceholder(variable_name="chat_history"),
+            ("user", "{input}"),
+            MessagesPlaceholder(variable_name="agent_scratchpad"),
+        ]
+    )
+
+    tools = get_agent_tools()
+    agent = create_openai_functions_agent(llm, tools, prompt)
+    agent_executor = AgentExecutor(
+        agent=agent,
+        tools=tools,
+        verbose=True,
+        return_intermediate_steps=True,
+        handle_parsing_errors=True,
+    )
+    return agent_executor
+
+
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
 async def proxy(path: str, request: Request, user=Depends(get_verified_user)):
     target_url = f"{app.state.OPENAI_API_BASE_URL}/{path}"
+    
     print(target_url, app.state.OPENAI_API_KEY)
 
+    
     if app.state.OPENAI_API_KEY == "":
         raise HTTPException(status_code=401, detail=ERROR_MESSAGES.API_KEY_NOT_FOUND)
 
@@ -138,6 +177,27 @@ async def proxy(path: str, request: Request, user=Depends(get_verified_user)):
     try:
         body = body.decode("utf-8")
         body = json.loads(body)
+
+        if path == 'chat/completions':
+            try:
+                messages = body['messages']
+                input = messages[-1]
+                chat_history = []
+                if len(messages) > 1:
+                    chat_history = messages[1:-1]
+                
+                agent_executor = create_agent(body.get("model"))
+                response = agent_executor.invoke(
+                    {
+                        "input": input,
+                        "time": str(datetime.now()),
+                        "chat_history": chat_history,
+                    }
+                )    
+                return response['output']
+            except Exception as e:
+                print("Failed to invoke agent executor from langchain", e)
+
 
         # Check if the model is "gpt-4-vision-preview" and set "max_tokens" to 4000
         # This is a workaround until OpenAI fixes the issue with this model

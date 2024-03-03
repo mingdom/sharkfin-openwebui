@@ -22,6 +22,11 @@ google-generativeai
 
 langchain
 langchain-community
+langchain_openai
+financetoolkit
+redis
+pyarrow
+
 chromadb
 sentence_transformers
 pypdf
