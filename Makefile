@@ -1,3 +1,8 @@
+.PHONY: build install remove stop logs
+
+build:
+	@docker-compose up -d --build
+
 install:
 	@docker-compose up -d
 
@@ -12,14 +17,17 @@ start:
 stop:
 	@docker-compose stop
 
-update:
-	# Calls the LLM update script
-	chmod +x update_ollama_models.sh
-	@./update_ollama_models.sh
-	@git pull
-	@docker-compose down
-	# Make sure the ollama-webui container is stopped before rebuilding
-	@docker stop open-webui || true
-	@docker-compose up --build -d
-	@docker-compose start
+# TODO: Doesn't work
+# update:
+# 	# Calls the LLM update script
+# 	chmod +x update_ollama_models.sh
+# 	@./update_ollama_models.sh
+# 	@git pull
+# 	@docker-compose down
+# 	# Make sure the ollama-webui container is stopped before rebuilding
+# 	@docker stop open-webui || true
+# 	@docker-compose up --build -d
+# 	@docker-compose start
 
+logs:
+	@docker-compose logs -f
