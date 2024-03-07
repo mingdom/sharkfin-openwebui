@@ -15,7 +15,7 @@ COPY . .
 RUN npm run build
 
 
-FROM python:3.11-slim-bookworm as base
+FROM python:3 as base
 
 ENV ENV=prod
 ENV PORT ""
@@ -26,6 +26,7 @@ ENV OPENAI_API_BASE_URL ""
 ENV OPENAI_API_KEY ""
 
 ENV WEBUI_SECRET_KEY ""
+ENV FMP_API_KEY ""
 
 ENV SCARF_NO_ANALYTICS true
 ENV DO_NOT_TRACK true
@@ -37,7 +38,7 @@ ENV WHISPER_MODEL_DIR="/app/backend/data/cache/whisper/models"
 
 # RAG Embedding Model Settings
 # any sentence transformer model; models to use can be found at https://huggingface.co/models?library=sentence-transformers
-# Leaderboard: https://huggingface.co/spaces/mteb/leaderboard 
+# Leaderboard: https://huggingface.co/spaces/mteb/leaderboard
 # for better persormance and multilangauge support use "intfloat/multilingual-e5-large" (~2.5GB) or "intfloat/multilingual-e5-base" (~1.5GB)
 # IMPORTANT: If you change the default model (all-MiniLM-L6-v2) and vice versa, you aren't able to use RAG Chat with your previous documents loaded in the WebUI! You need to re-embed them.
 ENV RAG_EMBEDDING_MODEL="all-MiniLM-L6-v2"
